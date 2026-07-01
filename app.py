@@ -1,6 +1,3 @@
-Here's the complete `app.py` — just select all in GitHub and replace:
-
-```python
 """
 app.py  —  Creative Audit Report Generator
 Streamlit web front-end for the Captivate Insights PPTX pipeline.
@@ -377,4 +374,3 @@ if generate_btn:
 
 st.divider()
 st.caption("Captivate Insights · Creative Audit Report Generator")
-```
