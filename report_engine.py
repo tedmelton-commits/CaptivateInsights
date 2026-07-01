@@ -43,7 +43,7 @@ def _get_secret(name: str) -> str:
 
 SMARTSHEET_API_KEY = _get_secret("SMARTSHEET_API_KEY")
 GEMINI_API_KEY     = _get_secret("GEMINI_API_KEY")
-GEMINI_MODEL       = "gemini-2.0-flash"
+GEMINI_MODEL       = "gemini-3.1-pro-preview"
 SHEET_ID           = 84909979815812
 
 COL_CATEGORY = "Category"
