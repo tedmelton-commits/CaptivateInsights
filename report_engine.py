@@ -34,11 +34,7 @@ from lxml import etree
 
 import google.generativeai as genai
 
-# ═══════════════════════════════════════════════════════════════
-# API KEYS  —  read from env / Streamlit secrets (never hardcode)
-# ═══════════════════════════════════════════════════════════════
 def _get_secret(name: str) -> str:
-    """Try Streamlit secrets first, fall back to env var."""
     try:
         import streamlit as st
         return st.secrets[name]
@@ -47,12 +43,9 @@ def _get_secret(name: str) -> str:
 
 SMARTSHEET_API_KEY = _get_secret("SMARTSHEET_API_KEY")
 GEMINI_API_KEY     = _get_secret("GEMINI_API_KEY")
-GEMINI_MODEL       = "gemini-3.1-pro-preview"
+GEMINI_MODEL       = "gemini-2.0-flash"
 SHEET_ID           = 84909979815812
 
-# ═══════════════════════════════════════════════════════════════
-# COLUMN NAMES
-# ═══════════════════════════════════════════════════════════════
 COL_CATEGORY = "Category"
 COL_BRAND    = "Brand"
 COL_ITEMTYPE = "Item Type"
@@ -95,15 +88,9 @@ MONTH_ORDER = [
 ]
 MONTH_INDEX = {m: i for i, m in enumerate(MONTH_ORDER)}
 
-# ═══════════════════════════════════════════════════════════════
-# PATHS
-# ═══════════════════════════════════════════════════════════════
 DOWNLOAD_DIR        = Path("/tmp/captivate_images")
-TITLE_TEMPLATE_PATH = Path("title_template.pdf")   # place alongside app.py
+TITLE_TEMPLATE_PATH = Path("title_template.pdf")
 
-# ═══════════════════════════════════════════════════════════════
-# DESIGN TOKENS  —  Option C: white bg, purple accents, white header
-# ═══════════════════════════════════════════════════════════════
 C_BG         = RGBColor(0xFF, 0xFF, 0xFF)
 C_HEADER     = RGBColor(0xFF, 0xFF, 0xFF)
 C_HEADER_BDR = RGBColor(0xE0, 0xE0, 0xE0)
@@ -128,9 +115,6 @@ C_RED_LBL    = C_RED_SCORE
 SLIDE_W = Inches(13.33)
 SLIDE_H = Inches(7.5)
 
-# ═══════════════════════════════════════════════════════════════
-# LOGGING
-# ═══════════════════════════════════════════════════════════════
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
@@ -138,10 +122,6 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-
-# ───────────────────────────────────────────────────────────────
-# SHAPE HELPERS
-# ───────────────────────────────────────────────────────────────
 
 def add_rect(slide, x, y, w, h, fill=None, line=None, lw=0, radius=0):
     shape = slide.shapes.add_shape(1, x, y, w, h)
@@ -205,10 +185,6 @@ def score_to_label(s):
     return "MISSABLE", C_RED_SCORE
 
 
-# ───────────────────────────────────────────────────────────────
-# SPEEDOMETER
-# ───────────────────────────────────────────────────────────────
-
 def generate_speedometer(score_str: str, out_path: Path) -> Path:
     try:
         s = score_str.strip().replace("%", "")
@@ -250,7 +226,6 @@ def generate_speedometer(score_str: str, out_path: Path) -> Path:
         ))
 
     ax.add_patch(plt.Circle((0, 0), 0.70, color=bg_hex, zorder=3))
-
     na = math.radians(180 - (score / MAX_SCORE) * 180)
     nx, ny = 0.62 * math.cos(na), 0.62 * math.sin(na)
     ax.plot([0, nx], [0, ny], color="#1A1A1A", lw=2.0, zorder=5, solid_capstyle="round")
@@ -273,10 +248,6 @@ def generate_speedometer(score_str: str, out_path: Path) -> Path:
     return out_path
 
 
-# ───────────────────────────────────────────────────────────────
-# SMARTSHEET CONNECTION
-# ───────────────────────────────────────────────────────────────
-
 def connect_to_smartsheet():
     key = SMARTSHEET_API_KEY or os.getenv("SMARTSHEET_API_KEY")
     if not key:
@@ -288,15 +259,11 @@ def connect_to_smartsheet():
 
 
 def load_sheet(client):
-    log.info("Fetching sheet %s …", SHEET_ID)
+    log.info("Fetching sheet %s ...", SHEET_ID)
     sheet   = client.Sheets.get_sheet(SHEET_ID)
     col_map = {col.title: col.id for col in sheet.columns}
     return sheet, col_map
 
-
-# ───────────────────────────────────────────────────────────────
-# DYNAMIC OPTION EXTRACTION
-# ───────────────────────────────────────────────────────────────
 
 def _cell_val(cell_map, col_map, col_name):
     cid  = col_map.get(col_name)
@@ -346,10 +313,6 @@ def extract_unique_values(sheet, col_map):
     return result
 
 
-# ───────────────────────────────────────────────────────────────
-# HEADER TEXT BUILDER
-# ───────────────────────────────────────────────────────────────
-
 def build_header_text(filters: dict) -> str:
     parts = []
     hierarchy = [
@@ -375,10 +338,6 @@ def build_header_text(filters: dict) -> str:
 
     return "  |  ".join(parts) if parts else "ALL DATA"
 
-
-# ───────────────────────────────────────────────────────────────
-# FILTERED ROW RETRIEVAL
-# ───────────────────────────────────────────────────────────────
 
 def get_filtered_rows(sheet, col_map, filters):
     simple = {
@@ -487,10 +446,6 @@ def get_filtered_rows(sheet, col_map, filters):
     return results
 
 
-# ───────────────────────────────────────────────────────────────
-# ATTACHMENTS
-# ───────────────────────────────────────────────────────────────
-
 def fetch_images_for_row(client, row_id):
     atts = client.Attachments.list_row_attachments(SHEET_ID, row_id)
     if not atts.data:
@@ -518,10 +473,6 @@ def fetch_images_for_row(client, row_id):
             log.warning("Attachment error row %s: %s", row_id, e)
     return paths
 
-
-# ───────────────────────────────────────────────────────────────
-# SHARED SLIDE CHROME
-# ───────────────────────────────────────────────────────────────
 
 _HDR_H = Inches(0.62)
 _M_L   = Inches(0.22)
@@ -564,18 +515,12 @@ def _draw_slide_chrome(slide, header_text):
     return _HDR_H + Inches(0.2)
 
 
-# ───────────────────────────────────────────────────────────────
-# CREATIVE SLIDE
-# ───────────────────────────────────────────────────────────────
-
 def build_slide(prs, row, image_paths, header_text):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-
     add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, fill=C_BG)
 
     M   = Inches(0.22)
     M_L = Inches(0.22)
-
     HDR_H = Inches(0.62)
     add_rect(slide, 0, 0, SLIDE_W, HDR_H, fill=C_HEADER)
     add_rect(slide, 0, HDR_H - Pt(1), SLIDE_W, Pt(1), fill=C_HEADER_BDR)
@@ -585,7 +530,6 @@ def build_slide(prs, row, image_paths, header_text):
     logo_y    = (HDR_H - LOGO_S) / 2
     logo_path = _ensure_logo()
     slide.shapes.add_picture(str(logo_path), logo_x, logo_y, LOGO_S, LOGO_S)
-
     add_text(
         slide, header_text,
         logo_x + LOGO_S + Inches(0.14), 0,
@@ -643,7 +587,6 @@ def build_slide(prs, row, image_paths, header_text):
 
     px = panel_x + Inches(0.22)
     pw = panel_w  - Inches(0.44)
-
     info_h  = panel_h * 0.44
     item_h  = info_h / 3
     start_y = img_y + Inches(0.18)
@@ -735,10 +678,6 @@ def build_slide(prs, row, image_paths, header_text):
     log.info("Slide built: %s / %s / %s", row["brand"], row["ref_code"], row["score"])
 
 
-# ───────────────────────────────────────────────────────────────
-# SUMMARY SLIDE
-# ───────────────────────────────────────────────────────────────
-
 def build_summary_slide(prs, rows, header_text, analysis_mode='average'):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     M = Inches(0.22)
@@ -765,17 +704,17 @@ def build_summary_slide(prs, rows, header_text, analysis_mode='average'):
 
     if analysis_mode == "volume":
         card_labels = [
-            ("CREATIVES REVIEWED", str(total)),
+            ("ASSETS REVIEWED",    str(total)),
             ("UNMISSABLE (85%+)",   str(unmissable_n)),
             ("WALLPAPER (55-84%)",  str(wallpaper_n)),
             ("MISSABLE (<55%)",     str(missable_n)),
         ]
     else:
         card_labels = [
-            ("ASSETS REVIEWED",     str(total)),
+            ("ASSETS REVIEWED",        str(total)),
             ("MOST PASSED CRITERION",  CRIT_SHORT_LABELS[pass_counts_cards.index(max(pass_counts_cards))] if total else "-"),
             ("LEAST PASSED CRITERION", CRIT_SHORT_LABELS[pass_counts_cards.index(min(pass_counts_cards))] if total else "-"),
-            ("AVG CREATIVE SCORE",     f"{avg_score_val:.0f}%" if scores_for_card else "-"),
+            ("AVG ASSET SCORE",        f"{avg_score_val:.0f}%" if scores_for_card else "-"),
         ]
 
     extra_cards = []
@@ -783,8 +722,8 @@ def build_summary_slide(prs, rows, header_text, analysis_mode='average'):
     countries_in_data = list({r["country"] for r in rows if r.get("country")})
 
     for field, field_label_top, field_label_low in [
-        ("brand",   "TOP BRAND",    "LOWEST BRAND"),
-        ("country", "TOP COUNTRY",  "LOWEST COUNTRY"),
+        ("brand",   "TOP BRAND",   "LOWEST BRAND"),
+        ("country", "TOP COUNTRY", "LOWEST COUNTRY"),
     ]:
         in_data = brands_in_data if field == "brand" else countries_in_data
         if len(in_data) > 1:
@@ -800,8 +739,8 @@ def build_summary_slide(prs, rows, header_text, analysis_mode='average'):
                 if analysis_mode == "volume":
                     top_v = max(fscores, key=lambda k: len(fscores[k]))
                     low_v = min(fscores, key=lambda k: len(fscores[k]))
-                    extra_cards.append(("MOST CREATIVES",   f"{top_v.title()} ({len(fscores[top_v])})"))
-                    extra_cards.append(("FEWEST CREATIVES",  f"{low_v.title()} ({len(fscores[low_v])})"))
+                    extra_cards.append(("MOST ASSETS",   f"{top_v.title()} ({len(fscores[top_v])})"))
+                    extra_cards.append(("FEWEST ASSETS",  f"{low_v.title()} ({len(fscores[low_v])})"))
                 else:
                     top_v = max(fscores, key=lambda k: sum(fscores[k])/len(fscores[k]))
                     low_v = min(fscores, key=lambda k: sum(fscores[k])/len(fscores[k]))
@@ -886,10 +825,6 @@ def build_summary_slide(prs, rows, header_text, analysis_mode='average'):
     log.info("Summary slide built (%d rows).", total)
 
 
-# ───────────────────────────────────────────────────────────────
-# TITLE SLIDE
-# ───────────────────────────────────────────────────────────────
-
 def build_title_slide(prs, header_text):
     from datetime import datetime as _dt
     date_str = _dt.now().strftime("%B %Y")
@@ -901,7 +836,7 @@ def build_title_slide(prs, header_text):
     pdf_path = next((p for p in candidates if p.exists()), None)
 
     if not pdf_path:
-        log.warning("title_template.pdf not found — skipping title slide.")
+        log.warning("title_template.pdf not found - skipping title slide.")
         return
 
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -921,13 +856,12 @@ def build_title_slide(prs, header_text):
         log.warning("PyMuPDF failed: %s", e)
 
     if not converted:
-        log.warning("Could not convert title PDF — skipping title slide.")
+        log.warning("Could not convert title PDF - skipping title slide.")
         return
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, fill=RGBColor(0x3D, 0x1A, 0x8C))
     slide.shapes.add_picture(str(img_out), 0, 0, SLIDE_W, SLIDE_H)
-
     add_text(slide, header_text,
              Inches(0.4), SLIDE_H * 0.635,
              SLIDE_W - Inches(0.8), Inches(0.75),
@@ -943,10 +877,6 @@ def build_title_slide(prs, header_text):
     except Exception:
         pass
 
-
-# ───────────────────────────────────────────────────────────────
-# GEMINI AI SYNOPSIS
-# ───────────────────────────────────────────────────────────────
 
 def generate_gemini_synopsis(rows, filters, fail_counts):
     try:
@@ -976,7 +906,7 @@ def generate_gemini_synopsis(rows, filters, fail_counts):
             context_parts.append(f"{label}: {', '.join(v) if isinstance(v, list) else v}")
     context_str = ", ".join(context_parts) if context_parts else "All Data"
 
-    scores    = []
+    scores = []
     for row in rows:
         try:
             scores.append(float(row["score"].replace("%", "")))
@@ -1011,8 +941,8 @@ SCORING FRAMEWORK:
 Banned words: "urgent", "urgently", "ruthlessly", "critical failure", "devastating", "alarming", "catastrophic", "brutal", "slash", "destroy", "eliminate"
 
 CONTEXT: {context_str}
-TOTAL CREATIVES REVIEWED: {total}
-AVERAGE CREATIVE SCORE: {avg_score:.0f}%
+TOTAL ASSETS REVIEWED: {total}
+AVERAGE ASSET SCORE: {avg_score:.0f}%
 TOP 3 SCORES: {', '.join(f'{s:.0f}%' for s in top_scores)}
 LOWEST 3 SCORES: {', '.join(f'{s:.0f}%' for s in low_scores)}
 
@@ -1132,9 +1062,9 @@ def build_synopsis_slide(prs, rows, filters, fail_counts, header_text):
                 p.alignment = PP_ALIGN.LEFT
 
                 for text_content, is_label, is_dot in [
-                    ("• ",                 False, True),
+                    ("• ",                                          False, True),
                     (label_part.upper() + ": " if label_part else None, True, False),
-                    (rest,                 False, False),
+                    (rest,                                          False, False),
                 ]:
                     if text_content is None:
                         continue
@@ -1147,10 +1077,6 @@ def build_synopsis_slide(prs, rows, filters, fail_counts, header_text):
 
     log.info("AI synopsis slide built.")
 
-
-# ───────────────────────────────────────────────────────────────
-# ANALYTICS SLIDE
-# ───────────────────────────────────────────────────────────────
 
 def build_analytics_slide(prs, rows, header_text, analysis_mode='average'):
     brand_map   = {}
@@ -1170,7 +1096,7 @@ def build_analytics_slide(prs, rows, header_text, analysis_mode='average'):
     multi_country = len(country_avgs) > 1
 
     if not multi_brand and not multi_country:
-        log.info("Analytics slide skipped — single brand/country.")
+        log.info("Analytics slide skipped - single brand/country.")
         return
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -1213,9 +1139,9 @@ def build_analytics_slide(prs, rows, header_text, analysis_mode='average'):
                 x_vals = np.linspace(0, 125, 500)
                 y_vals = kde(x_vals) * len(scores) * 5
                 ax.plot(x_vals, y_vals, color="#3C2A8C", linewidth=1.5, zorder=4)
-                ax.fill_between(x_vals, 0, y_vals, where=(x_vals < 55),                     facecolor="#C00000", alpha=0.8, zorder=3)
-                ax.fill_between(x_vals, 0, y_vals, where=((x_vals >= 55) & (x_vals < 85)),  facecolor="#E08C00", alpha=0.8, zorder=3)
-                ax.fill_between(x_vals, 0, y_vals, where=(x_vals >= 85),                     facecolor="#009999", alpha=0.8, zorder=3)
+                ax.fill_between(x_vals, 0, y_vals, where=(x_vals < 55), facecolor="#C00000", alpha=0.8, zorder=3)
+                ax.fill_between(x_vals, 0, y_vals, where=((x_vals >= 55) & (x_vals < 85)), facecolor="#E08C00", alpha=0.8, zorder=3)
+                ax.fill_between(x_vals, 0, y_vals, where=(x_vals >= 85), facecolor="#009999", alpha=0.8, zorder=3)
                 ymax = max(y_vals) if len(y_vals) > 0 else 1
             else:
                 bins = list(range(0, 126, 5))
@@ -1232,7 +1158,7 @@ def build_analytics_slide(prs, rows, header_text, analysis_mode='average'):
             ax.text(70,  ymax*1.25, "WALLPAPER",  color="#E08C00", fontsize=7.5, ha="center", fontweight="bold")
             ax.text(103, ymax*1.25, "UNMISSABLE", color="#009999", fontsize=7.5, ha="center", fontweight="bold")
             ax.set_xlabel("Score %", color="#444444", fontsize=8)
-            ax.set_ylabel("Approx. No. of Creatives", color="#444444", fontsize=8)
+            ax.set_ylabel("Approx. No. of Assets", color="#444444", fontsize=8)
             ax.set_title("SCORE DISTRIBUTION", color="#3C2A8C", fontsize=9, fontweight="bold", pad=8)
             ax.set_xlim(0, 125)
             ax.xaxis.set_tick_params(labelcolor="#444444", labelsize=7)
@@ -1247,7 +1173,7 @@ def build_analytics_slide(prs, rows, header_text, analysis_mode='average'):
                 labels   = [d[0].title() for d in sorted_data]
                 values   = [len(d[1]) for d in sorted_data]
                 bar_cols = ["#3C2A8C"] * len(values)
-                x_label  = "Number of Creatives"
+                x_label  = "Number of Assets"
                 title    = "BRAND VOLUME" if chart_type == "brand" else "COUNTRY VOLUME"
             else:
                 sorted_data = sorted(avg_map.items(), key=lambda x: x[1], reverse=True)[:15]
