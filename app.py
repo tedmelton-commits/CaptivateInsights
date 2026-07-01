@@ -1,3 +1,6 @@
+Here's the complete `app.py` — just select all in GitHub and replace:
+
+```python
 """
 app.py  —  Creative Audit Report Generator
 Streamlit web front-end for the Captivate Insights PPTX pipeline.
@@ -201,7 +204,7 @@ with st.sidebar:
 
     st.markdown('<div class="filter-section">Report Options</div>', unsafe_allow_html=True)
     analysis_mode = st.radio("Chart mode", options=["average", "volume"], format_func=lambda x: "Average score" if x == "average" else "Volume", horizontal=True, key="analysis_mode")
-    st.caption("**Average** — how well do creatives score?  \n**Volume** — how many creatives per brand/country?")
+    st.caption("**Average** — how well do assets score?  \n**Volume** — how many assets per brand/country?")
 
     st.divider()
     preview_btn  = st.button("🔍  Preview matching assets", use_container_width=True)
@@ -250,7 +253,7 @@ if st.session_state.get("last_filters") != filters:
 st.markdown(f"**Scope:** `{header_text}`")
 
 if preview_btn:
-    with st.spinner("Fetching matching rows…"):
+    with st.spinner("Fetching matching assets…"):
         rows = engine.get_filtered_rows(sheet, col_map, filters)
     st.session_state["rows_preview"] = rows
 
@@ -270,8 +273,8 @@ if rows:
 
     st.markdown(f"""
     <div class="stat-row">
-      <div class="stat-card"><div class="stat-label">Creatives found</div><div class="stat-value">{len(rows)}</div></div>
-      <div class="stat-card"><div class="stat-label">Avg score</div><div class="stat-value">{avg:.0f}%</div></div>
+      <div class="stat-card"><div class="stat-label">Assets Found</div><div class="stat-value">{len(rows)}</div></div>
+      <div class="stat-card"><div class="stat-label">Avg Score</div><div class="stat-value">{avg:.0f}%</div></div>
       <div class="stat-card stat-teal"><div class="stat-label">Unmissable</div><div class="stat-value">{unm}</div><div class="stat-sub">≥85%</div></div>
       <div class="stat-card stat-amber"><div class="stat-label">Wallpaper</div><div class="stat-value">{wall}</div><div class="stat-sub">55–84%</div></div>
       <div class="stat-card stat-red"><div class="stat-label">Missable</div><div class="stat-value">{miss}</div><div class="stat-sub">&lt;55%</div></div>
@@ -286,20 +289,19 @@ if rows:
         st.markdown(f"""<table class="preview-table"><thead><tr><th>Brand</th><th>Country</th><th>Category</th><th>BU / Cluster</th><th>Item Type</th><th>BG / 1UL</th><th>Ref Code</th><th>Score</th></tr></thead><tbody>{table_rows}</tbody></table>{"<p style='font-size:0.78rem;color:#888;margin-top:6px;'>Showing first 100 rows. All rows will be included in the report.</p>" if len(rows) > 100 else ""}""", unsafe_allow_html=True)
 
 elif preview_btn:
-    st.warning("No matching rows found for the selected filters.")
+    st.warning("No matching assets found for the selected filters.")
 
 if generate_btn:
     if not rows:
-        with st.spinner("Fetching matching rows…"):
+        with st.spinner("Fetching matching assets…"):
             rows = engine.get_filtered_rows(sheet, col_map, filters)
         st.session_state["rows_preview"] = rows
 
     if not rows:
-        st.warning("No matching rows found for the selected filters.")
+        st.warning("No matching assets found for the selected filters.")
     else:
         progress_bar = st.progress(0, text="Starting…")
         status_text  = st.empty()
-        total_steps  = len(rows) + 4
 
         try:
             import tempfile
@@ -335,7 +337,7 @@ if generate_btn:
 
                 for i, row in enumerate(rows_sorted, 1):
                     pct = 30 + int(i / len(rows_sorted) * 65)
-                    progress_bar.progress(pct, text=f"Slide {i}/{len(rows_sorted)} — {row.get('brand','')} {row.get('ref_code','')}")
+                    progress_bar.progress(pct, text=f"Asset {i}/{len(rows_sorted)} — {row.get('brand','')} {row.get('ref_code','')}")
                     images = engine.fetch_images_for_row(client, row["row_id"])
                     engine.build_slide(prs, row, images, header_text)
                     for img_path in images:
@@ -358,7 +360,7 @@ if generate_btn:
                     label_parts.append(v if isinstance(v, str) else "+".join(v[:2]))
             file_label = "_".join(label_parts).replace(" ","_").replace("/","-") if label_parts else "All_Data"
 
-            st.success(f"✅ Report ready — {len(rows_sorted)} slide(s) generated.")
+            st.success(f"✅ Report ready — {len(rows_sorted)} asset slide(s) generated.")
             st.download_button(
                 label="⬇  Download report (.pptx)",
                 data=buf,
@@ -375,3 +377,4 @@ if generate_btn:
 
 st.divider()
 st.caption("Captivate Insights · Creative Audit Report Generator")
+```
