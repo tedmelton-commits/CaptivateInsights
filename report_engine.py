@@ -772,7 +772,7 @@ def build_summary_slide(prs, rows, header_text, analysis_mode='average'):
         ]
     else:
         card_labels = [
-            ("CREATIVES REVIEWED",     str(total)),
+            ("ASSETS REVIEWED",     str(total)),
             ("MOST PASSED CRITERION",  CRIT_SHORT_LABELS[pass_counts_cards.index(max(pass_counts_cards))] if total else "-"),
             ("LEAST PASSED CRITERION", CRIT_SHORT_LABELS[pass_counts_cards.index(min(pass_counts_cards))] if total else "-"),
             ("AVG CREATIVE SCORE",     f"{avg_score_val:.0f}%" if scores_for_card else "-"),
